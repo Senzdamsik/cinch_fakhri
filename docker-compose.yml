@@ -4,14 +4,19 @@ services:
   app:
     build: .
     ports:
-      - "${API_PORT}:8000"
-    env_file:
-      - .env.docker
+      - "8000:8000"
     environment:
-      - DATABASE_URL=postgresql://postgres:${POSTGRES_PASSWORD}@db/test-cinch
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=test-cinch
+      - POSTGRES_PORT=5432
+      - POSTGRES_HOST=db
+      - API_PORT=8000
+      - DEBUG=true
+      - DATABASE_URL=postgresql+psycopg2://postgres:postgres@db:5432/test-cinch
     command: >
       sh -c "
-        while ! pg_isready -h db -p ${POSTGRES_PORT} -U ${POSTGRES_USER}; do
+        while ! pg_isready -h db -p 5432 -U postgres; do
           echo 'Waiting for database to be ready'
           sleep 1
         done &&
@@ -32,13 +37,11 @@ services:
       context: .
       dockerfile: Dockerfile.db
     ports:
-      - "5433:${POSTGRES_PORT}"
-    env_file:
-      - .env.docker
+      - "5433:5432"
     environment:
-      - POSTGRES_USER=${POSTGRES_USER}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=test-cinch
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - .:/app
@@ -46,7 +49,7 @@ services:
       - ./scripts/populate_tables.sql:/app/scripts/populate_tables.sql
       - ./scripts/seed_test_data.sql:/app/scripts/seed_test_data.sql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 5s
       timeout: 5s
       retries: 5
