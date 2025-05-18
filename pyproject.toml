@@ -1,0 +1,55 @@
+[project]
+name = "cinch-fakhri"
+version = "0.1.0"
+description = "Cinch's Senior Data Engineer test"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "alembic~=1.15.2",
+    "fastapi~=0.115.12",
+    "psycopg2-binary~=2.9.10",
+    "pydantic-settings~=2.9.1",
+    "python-dotenv~=1.1.0",
+    "sqlalchemy[mypy]~=2.0.40",
+    "uvicorn~=0.34.2",
+]
+
+[project.optional-dependencies]
+dev = [
+    "httpx~=0.28.1",
+    "pytest~=8.3.5",
+    "pytest-asyncio~=0.26.0",
+    "ruff~=0.11.10",
+]
+
+[tool.setuptools]
+packages = ["app", "alembic"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+
+[tool.ruff]
+line-length = 88
+target-version = "py310"
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "F",   # pyflakes
+    "B",   # flake8-bugbear
+    "I",   # isort
+    "N",   # naming
+    "UP",  # pyupgrade
+    "PL",  # pylint
+    "RUF", # ruff-specific rules
+]
+ignore = ["PLR2004"]  # Magic numbers in tests are acceptable
+
+[dependency-groups]
+dev = [
+    "httpx>=0.28.1",
+    "pytest>=8.3.5",
+    "pytest-asyncio>=0.26.0",
+    "ruff>=0.11.10",
+]

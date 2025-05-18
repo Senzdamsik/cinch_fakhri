@@ -1,0 +1,32 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+*.so
+
+# Test and coverage
+.coverage
+coverage.xml
+htmlcov/
+
+# Cache directories
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+
+# Virtual environments
+.venv
+
+# Environment and system files
+.env*
+.DS_Store 
+
+# Project specific
+alembic/versions/*.log
+.cursorignore
+
+# IDE
+.vscode/
