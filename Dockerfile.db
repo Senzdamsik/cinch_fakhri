@@ -1,0 +1,35 @@
+FROM postgres:15
+
+# Install Python and venv
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3 \
+    python3-venv \
+    python3-pip \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create and activate virtual environment
+ENV VIRTUAL_ENV=/opt/venv
+RUN python3 -m venv $VIRTUAL_ENV
+ENV PATH="$VIRTUAL_ENV/bin:$PATH"
+
+# Set up app directory
+WORKDIR /app
+
+# Copy requirements and install with retries
+COPY requirements.txt /app/
+RUN pip install --no-cache-dir -r requirements.txt || \
+    (sleep 5 && pip install --no-cache-dir -r requirements.txt) || \
+    (sleep 10 && pip install --no-cache-dir -r requirements.txt)
+
+# Copy application files
+COPY alembic.ini /app/
+COPY alembic /app/alembic/
+COPY app /app/app/
+COPY scripts/init-db.sh /docker-entrypoint-initdb.d/
+
+# Set proper permissions and ownership
+RUN chmod +x /docker-entrypoint-initdb.d/init-db.sh && \
+    chown -R postgres:postgres /app /docker-entrypoint-initdb.d
+
+# Switch to postgres user for security
+USER postgres 

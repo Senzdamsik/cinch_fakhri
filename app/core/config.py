@@ -1,5 +1,6 @@
 from dotenv import load_dotenv
 from pydantic_settings import BaseSettings, SettingsConfigDict
+import os
 
 load_dotenv()
 
@@ -23,12 +24,18 @@ class Settings(BaseSettings):
         case_sensitive=True,
     )
 
-    # Database settings
-    DATABASE_URL: str = "sqlite:///./app.db"
+    # Database settings - must be provided via environment variables
+    DATABASE_URL: str
+    POSTGRES_USER: str
+    POSTGRES_PASSWORD: str
+    POSTGRES_DB: str
+    POSTGRES_PORT: str = "5432"
+    POSTGRES_HOST: str = "localhost"
 
     # API settings
     API_V1_STR: str = "/api/v1"
     PROJECT_NAME: str = "Cinch API"
+    API_PORT: str = "8000"
 
     # CORS settings
     BACKEND_CORS_ORIGINS: list[str] = ["*"]

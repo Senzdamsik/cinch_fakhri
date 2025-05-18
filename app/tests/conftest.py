@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from alembic.command import upgrade
 from alembic.config import Config
+from app.db.database import Base  # Added import for Base
 
 
 def get_test_db_url(include_db_name: bool = True) -> str:
@@ -26,10 +27,10 @@ def get_test_db_url(include_db_name: bool = True) -> str:
     try:
         socket.gethostbyname('db')
         host = "db"
-        port = "5433"  # Inside Docker, use 5433
+        port = "5432"  # Docker environment uses internal port 5432
     except socket.gaierror:
         host = os.getenv("POSTGRES_HOST", "localhost")
-        port = os.getenv("POSTGRES_PORT", "5432")  # Default to 5432 for local environment
+        port = os.getenv("POSTGRES_PORT", "5432")  # Local environment uses 5432
     
     # Base URL without database name
     base_url = f"postgresql+psycopg2://{user}:{password}@{host}:{port}"
@@ -76,6 +77,13 @@ def setup_test_db() -> Iterator[None]:
     # Set environment variable for other parts of the application
     os.environ["DATABASE_URL"] = get_test_db_url()
     
+    # Get a connection to the database
+    engine = create_engine(get_test_db_url())
+    
+    # Drop all tables and recreate them (clean slate for testing)
+    print("Cleaning database...")
+    Base.metadata.drop_all(engine)
+    
     print("Running migrations...")
     # Run migrations
     alembic_cfg = Config("alembic.ini")
@@ -83,6 +91,10 @@ def setup_test_db() -> Iterator[None]:
     print("Migrations completed")
     
     yield
+    
+    # Clean up after tests (optional, since we already drop tables at start)
+    print("\nCleaning up after tests...")
+    Base.metadata.drop_all(engine)
 
 
 @pytest.fixture

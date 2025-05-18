@@ -100,22 +100,17 @@ class ProductListResponse(BaseModel):
 
 @router.get("/{product_id}", response_model=ProductResponse)
 async def get_product(
-    product_id: Annotated[int, Path(
-        description="The ID of the product to retrieve",
-        examples=[1],
-        ge=1
-    )],
+    product_id: Annotated[
+        int, Path(description="The ID of the product to retrieve", examples=[1], ge=1)
+    ],
     db: Session = db_dependency,
-    attributes_page: Annotated[int, Query(
-        ge=1,
-        description="Page number for attributes pagination",
-        examples=[1]
-    )] = 1,
-    attributes_per_page: Annotated[int, Query(
-        ge=1,
-        description="Number of attributes per page",
-        examples=[10]
-    )] = 10,
+    attributes_page: Annotated[
+        int,
+        Query(ge=1, description="Page number for attributes pagination", examples=[1]),
+    ] = 1,
+    attributes_per_page: Annotated[
+        int, Query(ge=1, description="Number of attributes per page", examples=[10])
+    ] = 10,
 ) -> ProductResponse:
     # Optimized query with eager loading and pagination
     stmt = (
@@ -166,25 +161,33 @@ async def get_product(
 @router.get("", response_model=ProductListResponse)
 async def list_products(
     db: Session = db_dependency,
-    region: Annotated[str | None, Query(
-        description="Filter products by region name (example: 'Singapore', 'Malaysia')",
-        examples=["Singapore", "Malaysia"]
-    )] = None,
-    rental_period: Annotated[int | None, Query(
-        description="Filter by rental period duration in months",
-        examples=[3, 6, 12]
-    )] = None,
-    page: Annotated[int, Query(
-        ge=1,
-        description="Page number for pagination of results",
-        examples=[1]
-    )] = 1,
-    per_page: Annotated[int, Query(
-        ge=1,
-        le=100,
-        description="Number of items to return per page (max 100)",
-        examples=[10, 20, 50]
-    )] = 10,
+    region: Annotated[
+        str | None,
+        Query(
+            description="Filter products by region name (example: 'Singapore', 'Malaysia')",
+            examples=["Singapore", "Malaysia"],
+        ),
+    ] = None,
+    rental_period: Annotated[
+        int | None,
+        Query(
+            description="Filter by rental period duration in months",
+            examples=[3, 6, 12],
+        ),
+    ] = None,
+    page: Annotated[
+        int,
+        Query(ge=1, description="Page number for pagination of results", examples=[1]),
+    ] = 1,
+    per_page: Annotated[
+        int,
+        Query(
+            ge=1,
+            le=100,
+            description="Number of items to return per page (max 100)",
+            examples=[10, 20, 50],
+        ),
+    ] = 10,
 ) -> ProductListResponse:
     # Start with base query
     stmt = select(Product).options(

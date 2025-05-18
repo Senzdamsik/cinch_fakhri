@@ -1,30 +1,36 @@
 FROM python:3.10-slim
 
-WORKDIR /app
+# Set environment variables
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PIP_NO_CACHE_DIR=off \
+    PIP_DISABLE_PIP_VERSION_CHECK=on \
+    PIP_DEFAULT_TIMEOUT=100
 
-RUN apt-get update && apt-get install -y \
-    gcc \
+# Install system dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
     libpq-dev \
     netcat-openbsd \
+    postgresql-client \
+    gcc \
+    python3-dev \
     && rm -rf /var/lib/apt/lists/*
 
-COPY pyproject.toml ./
-COPY app ./app
-COPY alembic ./alembic
-COPY alembic.ini ./
+WORKDIR /app
 
-RUN pip install --no-cache-dir \
-    fastapi==0.110.0 \
-    uvicorn==0.27.1 \
-    sqlalchemy==2.0.28 \
-    alembic==1.13.1 \
-    psycopg2==2.9.9 \
-    pytest==8.2.0 \
-    pytest-asyncio==0.26.0 \
-    httpx==0.27.0 \
-    python-dotenv==1.0.1 \
-    pydantic-settings==2.2.1
+# Install Python dependencies first
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Install test dependencies
+RUN pip install --no-cache-dir pytest pytest-asyncio httpx
+
+# Copy only necessary files
+COPY alembic.ini .
+COPY app app/
+COPY alembic alembic/
 
 EXPOSE 8000
 
-CMD ["sh", "-c", "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000"]
+# Start the application
+CMD ["sh", "-c", "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 4"]

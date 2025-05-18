@@ -11,7 +11,12 @@ from alembic import context  # type: ignore
 from app.db.database import Base
 from app.models.models import *  # noqa: F403
 
-load_dotenv()
+# Load environment variables from .env file
+print("Current working directory:", os.getcwd())
+load_dotenv(verbose=True)
+print("Environment variables after load_dotenv:")
+print("DATABASE_URL:", os.getenv("DATABASE_URL"))
+print("POSTGRES_HOST:", os.getenv("POSTGRES_HOST"))
 
 config = context.config
 

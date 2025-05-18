@@ -27,6 +27,12 @@ htmlcov/
 # Project specific
 alembic/versions/*.log
 .cursorignore
+.cursorrules
 
 # IDE
 .vscode/
+
+# New environment files
+.env
+.env.docker
+.env.*.local
