@@ -1,6 +1,7 @@
 steps:
   # Step 1: Validate Service Account Key with Enhanced Error Handling
-  - name: 'gcr.io/cloud-builders/gcloud'
+  - id: 'fetch-sa-key'
+    name: 'gcr.io/cloud-builders/gcloud'
     entrypoint: 'bash'
     args:
       - '-c'
@@ -27,7 +28,8 @@ steps:
         chmod 600 /workspace/sa-key.json
 
   # Step 2: Fetch Database Credentials Securely
-  - name: 'gcr.io/cloud-builders/gcloud'
+  - id: 'fetch-db-credentials'
+    name: 'gcr.io/cloud-builders/gcloud'
     entrypoint: 'bash'
     args:
       - '-c'
@@ -37,7 +39,8 @@ steps:
         gcloud secrets versions access latest --secret=DB_USER > /workspace/db_user.txt
 
   # Step 3: Run Database Migrations
-  - name: 'docker'
+  - id: 'build-migration-image'
+    name: 'docker'
     args:
       - 'build'
       - '-t'
@@ -46,13 +49,14 @@ steps:
       - 'Dockerfile.migration'
       - '.'
     
-  - name: 'migration-image'
+  - id: 'run-migrations'
+    name: 'migration-image'
     env:
       - 'DATABASE_URL=postgresql://$(cat /workspace/db_user.txt):$(cat /workspace/db_password.txt)@$(cat /workspace/db_host.txt):5432/test_cinch'
 
   # Step 4: Cloud SQL Proxy Setup
-  - name: 'gcr.io/cloud-sql-connectors/cloud-sql-proxy:2.1.0'
-    id: 'cloud-sql-proxy'
+  - id: 'cloud-sql-proxy'
+    name: 'gcr.io/cloud-sql-connectors/cloud-sql-proxy:2.1.0'
     entrypoint: 'bash'
     args:
       - '-c'
@@ -61,10 +65,11 @@ steps:
           --credentials-file=/workspace/sa-key.json \
           --port=5432 \
           speedy-area-192702:asia-southeast1:test-cinch
-    wait_for: ['migration-image']
+    wait_for: ['run-migrations']
 
   # Step 5: Database Seeding
-  - name: 'docker'
+  - id: 'build-db-seed-image'
+    name: 'docker'
     args:
       - 'build'
       - '-t'
@@ -73,16 +78,19 @@ steps:
       - 'Dockerfile.db-seed'
       - '.'
     
-  - name: 'db-seed-image'
+  - id: 'run-db-seed'
+    name: 'db-seed-image'
     env:
       - 'PGHOST=localhost'
       - 'PGPORT=5432'
       - 'PGUSER=$(cat /workspace/db_user.txt)'
       - 'PGDATABASE=test_cinch'
       - 'PGPASSWORD=$(cat /workspace/db_password.txt)'
+    wait_for: ['cloud-sql-proxy']
 
   # Step 6: Build Application Image
-  - name: 'docker'
+  - id: 'build-app-image'
+    name: 'docker'
     args:
       - 'build'
       - '-t'
@@ -90,13 +98,15 @@ steps:
       - '.'
 
   # Step 7: Push Image to Artifact Registry
-  - name: 'docker'
+  - id: 'push-app-image'
+    name: 'docker'
     args:
       - 'push'
       - 'asia-southeast1-docker.pkg.dev/${PROJECT_ID}/cinch-fakhri-repo/app:${SHORT_SHA}'
 
   # Step 8: Deploy to Cloud Run
-  - name: 'gcloud'
+  - id: 'deploy-to-cloud-run'
+    name: 'gcloud'
     args:
       - 'run'
       - 'deploy'
