@@ -40,7 +40,19 @@ steps:
         echo "postgres" > /workspace/db_user.txt
         echo "test_cinch" > /workspace/db_name.txt
 
-  # Step 3: Run Database Migrations
+  # Step 3: Cloud SQL Proxy Setup
+  - id: 'cloud-sql-proxy'
+    name: 'gcr.io/cloud-sql-connectors/cloud-sql-proxy:2.1.0'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        cloud-sql-proxy \
+          --credentials-file=/workspace/sa-key.json \
+          --port=5432 \
+          speedy-area-192702:asia-southeast1:test-cinch
+
+  # Step 4: Run Database Migrations
   - id: 'build-migration-image'
     name: 'docker'
     args:
@@ -61,19 +73,6 @@ steps:
       - 'POSTGRES_HOST=/cloudsql/speedy-area-192702:asia-southeast1:test-cinch'
       - 'POSTGRES_PORT=5432'
     wait_for: ['cloud-sql-proxy']
-
-  # Step 4: Cloud SQL Proxy Setup
-  - id: 'cloud-sql-proxy'
-    name: 'gcr.io/cloud-sql-connectors/cloud-sql-proxy:2.1.0'
-    entrypoint: 'bash'
-    args:
-      - '-c'
-      - |
-        cloud-sql-proxy \
-          --credentials-file=/workspace/sa-key.json \
-          --port=5432 \
-          speedy-area-192702:asia-southeast1:test-cinch
-    wait_for: ['run-migrations']
 
   # Step 5: Database Seeding
   - id: 'build-db-seed-image'
