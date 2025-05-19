@@ -25,7 +25,7 @@ steps:
         grep -o '"client_email": *"[^"]*"' /workspace/sa-key.json
         
         # Ensure correct permissions
-        chmod 600 /workspace/sa-key.json
+        chmod 644 /workspace/sa-key.json
 
   # Step 2: Fetch Database Password Only
   - id: 'fetch-db-password'
