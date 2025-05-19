@@ -1,11 +1,19 @@
 steps:
-  # Step 1: Get the service account key from Secret Manager
+  # Step 1: Get the service account key from Secret Manager with debugging
   - name: 'gcr.io/cloud-builders/gcloud'
     entrypoint: 'bash'
     args:
       - '-c'
       - |
-        gcloud secrets versions access latest --secret=sa-key > /workspace/sa-key.json
+        echo "$$SA_KEY" > /workspace/sa-key.json
+        echo "File contents:"
+        cat /workspace/sa-key.json
+        echo "File size:"
+        ls -l /workspace/sa-key.json
+        if [ ! -s /workspace/sa-key.json ]; then
+          echo "ERROR: Service account key file is empty!"
+          exit 1
+        fi
 
   # Step 2: Run database migrations
   - name: 'gcr.io/cloud-builders/docker'
@@ -83,6 +91,8 @@ availableSecrets:
   secretManager:
     - versionName: projects/speedy-area-192702/secrets/DB_PASSWORD/versions/latest
       env: 'DB_PASSWORD'
+    - versionName: projects/speedy-area-192702/secrets/sa-key/versions/latest
+      env: 'SA_KEY'
 
 options:
   logging: CLOUD_LOGGING_ONLY 

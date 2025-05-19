@@ -2,28 +2,11 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y \
-    postgresql-client \
-    gcc \
-    && rm -rf /var/lib/apt/lists/*
-
-# Install Python dependencies
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Install Alembic explicitly
-RUN pip install --no-cache-dir alembic psycopg2-binary sqlalchemy
-
-# Copy migration files
 COPY alembic.ini .
 COPY alembic/ alembic/
 COPY app/ app/
 
-# Print debug information
-RUN echo "Current directory contents:" && ls -la
-RUN echo "Alembic version:" && alembic --version
-
-# Set the entrypoint with verbose output
-ENTRYPOINT ["bash", "-c"]
-CMD ["set -x && alembic upgrade head"] 
+CMD ["alembic", "upgrade", "head"] 
