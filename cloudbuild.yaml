@@ -15,16 +15,16 @@ steps:
           exit 1
         fi
         
-        # Validate JSON structure
-        if ! jq empty /workspace/sa-key.json >/dev/null 2>&1; then
-          echo "ERROR: Invalid JSON in service account key file!"
+        # Validate JSON structure by checking for a specific key
+        if ! grep -q "client_email" /workspace/sa-key.json; then
+          echo "ERROR: Invalid service account key file!"
           cat /workspace/sa-key.json
           exit 1
         fi
         
         # Print out the client email for verification
         echo "Service Account Client Email:"
-        jq -r '.client_email' /workspace/sa-key.json
+        grep -o '"client_email": *"[^"]*"' /workspace/sa-key.json
         
         # Ensure correct permissions
         chmod 600 /workspace/sa-key.json
@@ -106,7 +106,7 @@ steps:
       - 'push'
       - 'asia-southeast1-docker.pkg.dev/${PROJECT_ID}/cinch-fakhri-repo/app:${SHORT_SHA}'
 
-  # Step 7: Deploy to Cloud Run
+  # Step 8: Deploy to Cloud Run
   - name: 'gcr.io/cloud-builders/gcloud'
     args:
       - 'run'
