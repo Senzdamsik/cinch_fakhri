@@ -26,6 +26,7 @@ steps:
         
         # Ensure correct permissions
         chmod 644 /workspace/sa-key.json
+    waitFor: ['-']
 
   # Step 2: Fetch Database Password Only
   - id: 'fetch-db-password'
@@ -39,6 +40,7 @@ steps:
         echo "35.240.241.62" > /workspace/db_host.txt
         echo "postgres" > /workspace/db_user.txt
         echo "test_cinch" > /workspace/db_name.txt
+    waitFor: ['-']
 
   # Step 3: Cloud SQL Proxy Setup
   - id: 'cloud-sql-proxy'
@@ -47,6 +49,7 @@ steps:
       - '--credentials-file=/workspace/sa-key.json'
       - '--port=5432'
       - 'speedy-area-192702:asia-southeast1:test-cinch'
+    waitFor: ['-']
 
   # Step 4: Build Application Image
   - id: 'build-app-image'
@@ -56,6 +59,7 @@ steps:
       - '-t'
       - 'asia-southeast1-docker.pkg.dev/${PROJECT_ID}/cinch-fakhri-repo/app:${SHORT_SHA}'
       - '.'
+    waitFor: ['-']
 
   # Step 5: Push Image to Artifact Registry
   - id: 'push-app-image'
@@ -63,6 +67,7 @@ steps:
     args:
       - 'push'
       - 'asia-southeast1-docker.pkg.dev/${PROJECT_ID}/cinch-fakhri-repo/app:${SHORT_SHA}'
+    waitFor: ['-']
 
   # Step 6: Deploy to Cloud Run
   - id: 'deploy-to-cloud-run'
@@ -82,6 +87,7 @@ steps:
       - 'speedy-area-192702:asia-southeast1:test-cinch'
       - '--set-env-vars'
       - 'DATABASE_URL=postgresql://postgres:$(cat /workspace/db_password.txt)@/test_cinch?host=/cloudsql/speedy-area-192702:asia-southeast1:test-cinch,POSTGRES_USER=postgres,POSTGRES_PASSWORD=$(cat /workspace/db_password.txt),POSTGRES_DB=test_cinch,POSTGRES_HOST=/cloudsql/speedy-area-192702:asia-southeast1:test-cinch'
+    waitFor: ['-']
 
 options:
   logging: CLOUD_LOGGING_ONLY 
