@@ -43,14 +43,10 @@ steps:
   # Step 3: Cloud SQL Proxy Setup
   - id: 'cloud-sql-proxy'
     name: 'gcr.io/cloud-sql-connectors/cloud-sql-proxy:2.1.0'
-    entrypoint: 'bash'
     args:
-      - '-c'
-      - |
-        cloud-sql-proxy \
-          --credentials-file=/workspace/sa-key.json \
-          --port=5432 \
-          speedy-area-192702:asia-southeast1:test-cinch
+      - '--credentials-file=/workspace/sa-key.json'
+      - '--port=5432'
+      - 'speedy-area-192702:asia-southeast1:test-cinch'
 
   # Step 4: Run Database Migrations
   - id: 'build-migration-image'
