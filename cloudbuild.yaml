@@ -5,7 +5,8 @@ steps:
     args:
       - '-c'
       - |
-        echo "$$SA_KEY" > /workspace/sa-key.json
+        echo "Fetching service account key..."
+        gcloud secrets versions access latest --secret=sa-key > /workspace/sa-key.json
         echo "File contents:"
         cat /workspace/sa-key.json
         echo "File size:"
@@ -91,8 +92,6 @@ availableSecrets:
   secretManager:
     - versionName: projects/speedy-area-192702/secrets/DB_PASSWORD/versions/latest
       env: 'DB_PASSWORD'
-    - versionName: projects/speedy-area-192702/secrets/sa-key/versions/latest
-      env: 'SA_KEY'
 
 options:
   logging: CLOUD_LOGGING_ONLY 
