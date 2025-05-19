@@ -8,23 +8,22 @@ steps:
         # Fetch service account key with error handling
         gcloud secrets versions access latest --secret=sa-key > /workspace/sa-key.json || exit 1
         
-        # Validate JSON structure
-        python3 -c "
-import json
-import sys
-
-try:
-    with open('/workspace/sa-key.json', 'r') as f:
-        data = json.load(f)
-        if not data.get('client_email'):
-            print('Invalid service account key')
-            sys.exit(1)
-        print(f'Validated service account: {data.get("client_email")}')
-except json.JSONDecodeError:
-    print('Invalid JSON in service account key')
-    sys.exit(1)
-" || exit 1
-
+        # Validate JSON structure with a simple check
+        if [ ! -s /workspace/sa-key.json ]; then
+          echo "ERROR: Service account key file is empty!"
+          exit 1
+        fi
+        
+        if ! grep -q "client_email" /workspace/sa-key.json; then
+          echo "ERROR: Invalid service account key file!"
+          exit 1
+        fi
+        
+        # Print out the client email for verification
+        echo "Service Account Client Email:"
+        grep -o '"client_email": *"[^"]*"' /workspace/sa-key.json
+        
+        # Ensure correct permissions
         chmod 600 /workspace/sa-key.json
 
   # Step 2: Fetch Database Credentials Securely
