@@ -15,6 +15,12 @@ steps:
           exit 1
         fi
         
+        # Check for valid JSON format
+        if ! jq empty /workspace/sa-key.json; then
+          echo "ERROR: Service account key file is not valid JSON!"
+          exit 1
+        fi
+        
         if ! grep -q "client_email" /workspace/sa-key.json; then
           echo "ERROR: Invalid service account key file!"
           exit 1
