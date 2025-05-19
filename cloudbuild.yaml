@@ -15,11 +15,8 @@ steps:
           exit 1
         fi
         
-        # Check for valid JSON format
-        if ! jq empty /workspace/sa-key.json; then
-          echo "ERROR: Service account key file is not valid JSON!"
-          exit 1
-        fi
+        # Check for valid JSON format using Python
+        python3 -c "import json; json.load(open('/workspace/sa-key.json'))" || { echo "ERROR: Service account key file is not valid JSON!"; exit 1; }
         
         if ! grep -q "client_email" /workspace/sa-key.json; then
           echo "ERROR: Invalid service account key file!"
