@@ -1,6 +1,8 @@
 # Cinch Product Rental API
 
-This is a FastAPI application for a Product Rental Service that supports product details, attributes, rental periods, and regional pricing. The API allows users to retrieve complete product information including attributes, rental periods, and region-specific pricing.
+This is a FastAPI application for Fakhri's Senior Python Developer test at Cinch. The app allows users to retrieve complete product information including attributes, rental periods, and region-specific pricing.
+
+You can access the live app at: https://cinch-fakhri-service-171906912767.asia-southeast1.run.app/docs/
 
 ## Prerequisites
 
