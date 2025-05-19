@@ -1,0 +1,91 @@
+steps:
+  # Step 1: Get the service account key from Secret Manager
+  - name: 'gcr.io/cloud-builders/gcloud'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        gcloud secrets versions access latest --secret=sa-key > /workspace/sa-key.json
+
+  # Step 2: Run database migrations
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '-t'
+      - 'migration-image'
+      - '-f'
+      - 'Dockerfile.migration'
+      - '.'
+
+  - name: 'migration-image'
+    env:
+      - 'DATABASE_URL=postgresql://postgres:$$DB_PASSWORD@35.240.241.62:5432/test_cinch'
+    secretEnv: ['DB_PASSWORD']
+
+  # Step 3: Populate database with initial data
+  - name: 'gcr.io/cloud-sql-connectors/cloud-sql-proxy:2.1.0'
+    args:
+      - '--credentials-file=/workspace/sa-key.json'
+      - '--port=5432'
+      - 'speedy-area-192702:asia-southeast1:test-cinch'
+    waitFor: ['-']
+
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '-t'
+      - 'db-seed-image'
+      - '-f'
+      - 'Dockerfile.db-seed'
+      - '.'
+
+  - name: 'db-seed-image'
+    env:
+      - 'PGHOST=localhost'
+      - 'PGPORT=5432'
+      - 'PGUSER=postgres'
+      - 'PGDATABASE=test_cinch'
+    secretEnv: ['DB_PASSWORD']
+
+  # Step 4: Build the application image
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '-t'
+      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/cinch-fakhri-repo/app:${SHORT_SHA}'
+      - '.'
+
+  # Step 5: Push the image to Artifact Registry
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'push'
+      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/cinch-fakhri-repo/app:${SHORT_SHA}'
+
+  # Step 6: Deploy to Cloud Run
+  - name: 'gcr.io/cloud-builders/gcloud'
+    args:
+      - 'run'
+      - 'deploy'
+      - 'cinch-fakhri-service'
+      - '--image'
+      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/cinch-fakhri-repo/app:${SHORT_SHA}'
+      - '--region'
+      - '${_REGION}'
+      - '--platform'
+      - 'managed'
+      - '--allow-unauthenticated'
+      - '--add-cloudsql-instances'
+      - 'speedy-area-192702:asia-southeast1:test-cinch'
+      - '--set-env-vars'
+      - 'DATABASE_URL=postgresql://postgres:$$DB_PASSWORD@/test_cinch?host=/cloudsql/speedy-area-192702:asia-southeast1:test-cinch'
+
+substitutions:
+  _REGION: asia-southeast1
+
+availableSecrets:
+  secretManager:
+    - versionName: projects/speedy-area-192702/secrets/DB_PASSWORD/versions/latest
+      env: 'DB_PASSWORD'
+
+options:
+  logging: CLOUD_LOGGING_ONLY 
