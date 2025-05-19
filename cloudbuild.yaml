@@ -52,14 +52,14 @@ steps:
     args:
       - 'build'
       - '-t'
-      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/cinch-fakhri-repo/app:${SHORT_SHA}'
+      - 'asia-southeast1-docker.pkg.dev/${PROJECT_ID}/cinch-fakhri-repo/app:${SHORT_SHA}'
       - '.'
 
   # Step 5: Push the image to Artifact Registry
   - name: 'gcr.io/cloud-builders/docker'
     args:
       - 'push'
-      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/cinch-fakhri-repo/app:${SHORT_SHA}'
+      - 'asia-southeast1-docker.pkg.dev/${PROJECT_ID}/cinch-fakhri-repo/app:${SHORT_SHA}'
 
   # Step 6: Deploy to Cloud Run
   - name: 'gcr.io/cloud-builders/gcloud'
@@ -68,9 +68,9 @@ steps:
       - 'deploy'
       - 'cinch-fakhri-service'
       - '--image'
-      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/cinch-fakhri-repo/app:${SHORT_SHA}'
+      - 'asia-southeast1-docker.pkg.dev/${PROJECT_ID}/cinch-fakhri-repo/app:${SHORT_SHA}'
       - '--region'
-      - '${_REGION}'
+      - 'asia-southeast1'
       - '--platform'
       - 'managed'
       - '--allow-unauthenticated'
@@ -78,9 +78,6 @@ steps:
       - 'speedy-area-192702:asia-southeast1:test-cinch'
       - '--set-env-vars'
       - 'DATABASE_URL=postgresql://postgres:$$DB_PASSWORD@/test_cinch?host=/cloudsql/speedy-area-192702:asia-southeast1:test-cinch'
-
-substitutions:
-  _REGION: asia-southeast1
 
 availableSecrets:
   secretManager:
