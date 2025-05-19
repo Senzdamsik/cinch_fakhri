@@ -88,8 +88,10 @@ steps:
       - '--allow-unauthenticated'
       - '--add-cloudsql-instances'
       - 'speedy-area-192702:asia-southeast1:test-cinch'
+      - '--set-secrets'
+      - 'POSTGRES_PASSWORD=DB_PASSWORD:latest'
       - '--set-env-vars'
-      - 'DATABASE_URL=postgresql://postgres:$(cat /workspace/db_password.txt)@/test_cinch?host=/cloudsql/speedy-area-192702:asia-southeast1:test-cinch,POSTGRES_USER=postgres,POSTGRES_PASSWORD=$(cat /workspace/db_password.txt),POSTGRES_DB=test_cinch,POSTGRES_HOST=/cloudsql/speedy-area-192702:asia-southeast1:test-cinch'
+      - 'DATABASE_URL=postgresql://postgres:$(DB_PASSWORD)@/test_cinch?host=/cloudsql/speedy-area-192702:asia-southeast1:test-cinch,POSTGRES_USER=postgres,POSTGRES_DB=test_cinch,POSTGRES_HOST=/cloudsql/speedy-area-192702:asia-southeast1:test-cinch'
     waitFor: ['push-app-image']
 
 options:
