@@ -57,7 +57,7 @@ steps:
     args:
       - 'build'
       - '-t'
-      - 'asia-southeast1-docker.pkg.dev/${PROJECT_ID}/cinch-fakhri-repo/app:${SHORT_SHA}'
+      - 'asia-southeast1-docker.pkg.dev/speedy-area-192702/cinch-fakhri-repo/app:${SHORT_SHA}'
       - '.'
     waitFor: ['-']
 
@@ -66,8 +66,8 @@ steps:
     name: 'docker'
     args:
       - 'push'
-      - 'asia-southeast1-docker.pkg.dev/${PROJECT_ID}/cinch-fakhri-repo/app:${SHORT_SHA}'
-    waitFor: ['-']
+      - 'asia-southeast1-docker.pkg.dev/speedy-area-192702/cinch-fakhri-repo/app:${SHORT_SHA}'
+    waitFor: ['build-app-image']
 
   # Step 6: Deploy to Cloud Run
   - id: 'deploy-to-cloud-run'
@@ -77,7 +77,7 @@ steps:
       - 'deploy'
       - 'cinch-fakhri-service'
       - '--image'
-      - 'asia-southeast1-docker.pkg.dev/${PROJECT_ID}/cinch-fakhri-repo/app:${SHORT_SHA}'
+      - 'asia-southeast1-docker.pkg.dev/speedy-area-192702/cinch-fakhri-repo/app:${SHORT_SHA}'
       - '--region'
       - 'asia-southeast1'
       - '--platform'
@@ -87,7 +87,7 @@ steps:
       - 'speedy-area-192702:asia-southeast1:test-cinch'
       - '--set-env-vars'
       - 'DATABASE_URL=postgresql://postgres:$(cat /workspace/db_password.txt)@/test_cinch?host=/cloudsql/speedy-area-192702:asia-southeast1:test-cinch,POSTGRES_USER=postgres,POSTGRES_PASSWORD=$(cat /workspace/db_password.txt),POSTGRES_DB=test_cinch,POSTGRES_HOST=/cloudsql/speedy-area-192702:asia-southeast1:test-cinch'
-    waitFor: ['-']
+    waitFor: ['push-app-image']
 
 options:
   logging: CLOUD_LOGGING_ONLY 
