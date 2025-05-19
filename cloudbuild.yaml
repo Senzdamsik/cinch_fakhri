@@ -33,14 +33,15 @@ steps:
       - '--add-cloudsql-instances'
       - 'speedy-area-192702:asia-southeast1:test-cinch'
       - '--set-secrets'
-      - |
-        DB_USER=DB_USER:latest,
-        DB_PASSWORD=DB_PASSWORD:latest,
-        DB_HOST=DB_HOST:latest,
-        SA_KEY=sa-key:latest
+      - 'DB_USER=projects/${PROJECT_ID}/secrets/DB_USER/versions/latest'
+      - '--set-secrets'
+      - 'DB_PASSWORD=projects/${PROJECT_ID}/secrets/DB_PASSWORD/versions/latest'
+      - '--set-secrets'
+      - 'DB_HOST=projects/${PROJECT_ID}/secrets/DB_HOST/versions/latest'
+      - '--set-secrets'
+      - 'SA_KEY=projects/${PROJECT_ID}/secrets/sa-key/versions/latest'
       - '--set-env-vars'
-      - |
-        DATABASE_URL=postgresql://$${DB_USER}:$${DB_PASSWORD}@/test_cinch?host=/cloudsql/speedy-area-192702:asia-southeast1:test-cinch
+      - 'DATABASE_URL=postgresql://${DB_USER}:${DB_PASSWORD}@/test_cinch?host=/cloudsql/speedy-area-192702:asia-southeast1:test-cinch'
     waitFor: ['push-app']
 
 options:
