@@ -54,12 +54,13 @@ steps:
   - id: 'run-migrations'
     name: 'migration-image'
     env:
-      - 'DATABASE_URL=postgresql://postgres:$(cat /workspace/db_password.txt)@35.240.241.62:5432/test_cinch'
+      - 'DATABASE_URL=postgresql://postgres:$(cat /workspace/db_password.txt)@/test_cinch?host=/cloudsql/speedy-area-192702:asia-southeast1:test-cinch'
       - 'POSTGRES_USER=postgres'
       - 'POSTGRES_PASSWORD=$(cat /workspace/db_password.txt)'
       - 'POSTGRES_DB=test_cinch'
-      - 'POSTGRES_HOST=35.240.241.62'
+      - 'POSTGRES_HOST=/cloudsql/speedy-area-192702:asia-southeast1:test-cinch'
       - 'POSTGRES_PORT=5432'
+    wait_for: ['cloud-sql-proxy']
 
   # Step 4: Cloud SQL Proxy Setup
   - id: 'cloud-sql-proxy'
