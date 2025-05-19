@@ -1,86 +1,108 @@
 steps:
   # Step 1: Validate Service Account Key with Enhanced Error Handling
-  - id: 'fetch-sa-key'
-    name: 'gcr.io/cloud-builders/gcloud'
+  - name: 'gcr.io/cloud-builders/gcloud'
     entrypoint: 'bash'
     args:
       - '-c'
-      - |
-        # Fetch service account key with error handling
+      - >
         gcloud secrets versions access latest --secret=sa-key > /workspace/sa-key.json || exit 1
-        
-        # Validate JSON structure with a simple check
-        if [ ! -s /workspace/sa-key.json ]; then
-          echo "ERROR: Service account key file is empty!"
-          exit 1
-        fi
-        
-        # Check for valid JSON format using Python
-        python3 -c "import json; json.load(open('/workspace/sa-key.json'))" || { echo "ERROR: Service account key file is not valid JSON!"; exit 1; }
-        
-        if ! grep -q "client_email" /workspace/sa-key.json; then
-          echo "ERROR: Invalid service account key file!"
-          exit 1
-        fi
-        
-        # Print out the client email for verification
-        echo "Service Account Client Email:"
-        grep -o '"client_email": *"[^"]*"' /workspace/sa-key.json
-        
-        # Ensure correct permissions
-        chmod 644 /workspace/sa-key.json
-    waitFor: ['-']
+        &&
+        python3 -c "
+import json
+import sys
 
-  # Step 2: Fetch Database Password Only
-  - id: 'fetch-db-password'
-    name: 'gcr.io/cloud-builders/gcloud'
+try:
+    with open('/workspace/sa-key.json', 'r') as f:
+        data = json.load(f)
+        if not data.get('client_email'):
+            print('Invalid service account key')
+            sys.exit(1)
+        print(f'Validated service account: {data.get(\"client_email\")}')
+except json.JSONDecodeError:
+    print('Invalid JSON in service account key')
+    sys.exit(1)
+" || exit 1
+        &&
+        chmod 600 /workspace/sa-key.json
+
+  # Step 2: Fetch all secrets from Secret Manager
+  - name: 'gcr.io/cloud-builders/gcloud'
     entrypoint: 'bash'
     args:
       - '-c'
       - |
+        echo "Fetching secrets..."
         gcloud secrets versions access latest --secret=DB_PASSWORD > /workspace/db_password.txt
-        # Use hardcoded values for non-sensitive configuration
-        echo "35.240.241.62" > /workspace/db_host.txt
-        echo "postgres" > /workspace/db_user.txt
-        echo "test_cinch" > /workspace/db_name.txt
-    waitFor: ['-']
+        gcloud secrets versions access latest --secret=DB_USER > /workspace/db_user.txt
+        gcloud secrets versions access latest --secret=DB_HOST > /workspace/db_host.txt
 
-  # Step 3: Cloud SQL Proxy Setup
-  - id: 'cloud-sql-proxy'
-    name: 'gcr.io/cloud-sql-connectors/cloud-sql-proxy:2.1.0'
-    args:
-      - '--credentials-file=/workspace/sa-key.json'
-      - '--port=5432'
-      - 'speedy-area-192702:asia-southeast1:test-cinch'
-    waitFor: ['-']
-
-  # Step 4: Build Application Image
-  - id: 'build-app-image'
-    name: 'docker'
+  # Step 3: Run Database Migrations
+  - name: 'docker'
     args:
       - 'build'
       - '-t'
-      - 'asia-southeast1-docker.pkg.dev/speedy-area-192702/cinch-fakhri-repo/app:${SHORT_SHA}'
+      - 'migration-image'
+      - '-f'
+      - 'Dockerfile.migration'
       - '.'
-    waitFor: ['-']
+    
+  - name: 'migration-image'
+    env:
+      - 'DATABASE_URL=postgresql://$(cat /workspace/db_user.txt):$(cat /workspace/db_password.txt)@$(cat /workspace/db_host.txt):5432/test_cinch'
 
-  # Step 5: Push Image to Artifact Registry
-  - id: 'push-app-image'
-    name: 'docker'
+  # Step 4: Cloud SQL Proxy Setup
+  - name: 'gcr.io/cloud-sql-connectors/cloud-sql-proxy:2.1.0'
+    id: 'cloud-sql-proxy'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        cloud-sql-proxy \
+          --credentials-file=/workspace/sa-key.json \
+          --port=5432 \
+          speedy-area-192702:asia-southeast1:test-cinch
+    wait_for: ['migration-image']
+
+  # Step 5: Database Seeding
+  - name: 'docker'
+    args:
+      - 'build'
+      - '-t'
+      - 'db-seed-image'
+      - '-f'
+      - 'Dockerfile.db-seed'
+      - '.'
+    
+  - name: 'db-seed-image'
+    env:
+      - 'PGHOST=localhost'
+      - 'PGPORT=5432'
+      - 'PGUSER=$(cat /workspace/db_user.txt)'
+      - 'PGDATABASE=test_cinch'
+      - 'PGPASSWORD=$(cat /workspace/db_password.txt)'
+
+  # Step 6: Build Application Image
+  - name: 'docker'
+    args:
+      - 'build'
+      - '-t'
+      - 'asia-southeast1-docker.pkg.dev/${PROJECT_ID}/cinch-fakhri-repo/app:${SHORT_SHA}'
+      - '.'
+
+  # Step 7: Push Image to Artifact Registry
+  - name: 'docker'
     args:
       - 'push'
-      - 'asia-southeast1-docker.pkg.dev/speedy-area-192702/cinch-fakhri-repo/app:${SHORT_SHA}'
-    waitFor: ['build-app-image']
+      - 'asia-southeast1-docker.pkg.dev/${PROJECT_ID}/cinch-fakhri-repo/app:${SHORT_SHA}'
 
-  # Step 6: Deploy to Cloud Run
-  - id: 'deploy-to-cloud-run'
-    name: 'gcr.io/cloud-builders/gcloud'
+  # Step 8: Deploy to Cloud Run with secrets as environment variables
+  - name: 'gcr.io/cloud-builders/gcloud'
     args:
       - 'run'
       - 'deploy'
       - 'cinch-fakhri-service'
       - '--image'
-      - 'asia-southeast1-docker.pkg.dev/speedy-area-192702/cinch-fakhri-repo/app:${SHORT_SHA}'
+      - 'asia-southeast1-docker.pkg.dev/${PROJECT_ID}/cinch-fakhri-repo/app:${SHORT_SHA}'
       - '--region'
       - 'asia-southeast1'
       - '--platform'
@@ -88,13 +110,14 @@ steps:
       - '--allow-unauthenticated'
       - '--add-cloudsql-instances'
       - 'speedy-area-192702:asia-southeast1:test-cinch'
-      - '--set-secrets'
-      - 'POSTGRES_PASSWORD=DB_PASSWORD:latest'
       - '--set-env-vars'
-      - 'DATABASE_URL=postgresql://postgres:$(DB_PASSWORD)@/test_cinch?host=/cloudsql/speedy-area-192702:asia-southeast1:test-cinch,POSTGRES_USER=postgres,POSTGRES_DB=test_cinch,POSTGRES_HOST=/cloudsql/speedy-area-192702:asia-southeast1:test-cinch'
-      - '--service-account'
-      - 'pribadi-speedy-area-192702@speedy-area-192702.iam.gserviceaccount.com'
-    waitFor: ['push-app-image']
+      - 'DATABASE_URL=postgresql://$(cat /workspace/db_user.txt):$(cat /workspace/db_password.txt)@/test_cinch?host=/cloudsql/speedy-area-192702:asia-southeast1:test-cinch'
+      - '--set-env-vars'
+      - 'DB_USER=$(cat /workspace/db_user.txt)'
+      - '--set-env-vars'
+      - 'DB_PASSWORD=$(cat /workspace/db_password.txt)'
+      - '--set-env-vars'
+      - 'DB_HOST=$(cat /workspace/db_host.txt)'
 
 options:
   logging: CLOUD_LOGGING_ONLY 
