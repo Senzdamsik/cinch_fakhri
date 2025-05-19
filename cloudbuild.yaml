@@ -74,7 +74,7 @@ steps:
 
   # Step 6: Deploy to Cloud Run
   - id: 'deploy-to-cloud-run'
-    name: 'gcloud'
+    name: 'gcr.io/cloud-builders/gcloud'
     args:
       - 'run'
       - 'deploy'
