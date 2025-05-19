@@ -8,4 +8,4 @@ app.include_router(products.router)
 
 @app.get("/")
 async def root() -> dict[str, str]:
-    return {"message": "Welcome to Cinch Product Rental API"}
+    return {"message": "Welcome to Cinch Product Rental API!"}
