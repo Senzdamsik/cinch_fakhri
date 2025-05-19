@@ -1,11 +1,33 @@
 steps:
-  # Step 1: Get the service account key from Secret Manager
+  # Step 1: Get the service account key from Secret Manager with robust error checking
   - name: 'gcr.io/cloud-builders/gcloud'
     entrypoint: 'bash'
     args:
       - '-c'
       - |
+        echo "Fetching service account key..."
+        # Fetch the secret and validate it
         gcloud secrets versions access latest --secret=sa-key > /workspace/sa-key.json
+        
+        # Check if the file is empty
+        if [ ! -s /workspace/sa-key.json ]; then
+          echo "ERROR: Service account key file is empty!"
+          exit 1
+        fi
+        
+        # Validate JSON structure
+        if ! jq empty /workspace/sa-key.json >/dev/null 2>&1; then
+          echo "ERROR: Invalid JSON in service account key file!"
+          cat /workspace/sa-key.json
+          exit 1
+        fi
+        
+        # Print out the client email for verification
+        echo "Service Account Client Email:"
+        jq -r '.client_email' /workspace/sa-key.json
+        
+        # Ensure correct permissions
+        chmod 600 /workspace/sa-key.json
 
   # Step 2: Fetch database password
   - name: 'gcr.io/cloud-builders/gcloud'
@@ -29,14 +51,30 @@ steps:
     env:
       - 'DATABASE_URL=postgresql://postgres:$(cat /workspace/db_password.txt)@35.240.241.62:5432/test_cinch'
 
-  # Step 4: Populate database with initial data
+  # Step 4: Set up Cloud SQL Proxy with detailed logging
   - name: 'gcr.io/cloud-sql-connectors/cloud-sql-proxy:2.1.0'
+    entrypoint: 'bash'
     args:
-      - '--credentials-file=/workspace/sa-key.json'
-      - '--port=5432'
-      - 'speedy-area-192702:asia-southeast1:test-cinch'
-    waitFor: ['-']
+      - '-c'
+      - |
+        echo "Cloud SQL Proxy Configuration:"
+        echo "Credentials file: /workspace/sa-key.json"
+        echo "Connection name: speedy-area-192702:asia-southeast1:test-cinch"
+        
+        # Validate service account key before using
+        if [ ! -s /workspace/sa-key.json ]; then
+          echo "ERROR: Service account key file is missing or empty!"
+          exit 1
+        fi
+        
+        # Run Cloud SQL Proxy with verbose logging
+        cloud-sql-proxy \
+          --credentials-file=/workspace/sa-key.json \
+          --port=5432 \
+          --verbose \
+          speedy-area-192702:asia-southeast1:test-cinch
 
+  # Step 5: Populate database with initial data
   - name: 'gcr.io/cloud-builders/docker'
     args:
       - 'build'
@@ -54,7 +92,7 @@ steps:
       - 'PGDATABASE=test_cinch'
       - 'PGPASSWORD=$(cat /workspace/db_password.txt)'
 
-  # Step 5: Build the application image
+  # Step 6: Build the application image
   - name: 'gcr.io/cloud-builders/docker'
     args:
       - 'build'
@@ -62,7 +100,7 @@ steps:
       - 'asia-southeast1-docker.pkg.dev/${PROJECT_ID}/cinch-fakhri-repo/app:${SHORT_SHA}'
       - '.'
 
-  # Step 6: Push the image to Artifact Registry
+  # Step 7: Push the image to Artifact Registry
   - name: 'gcr.io/cloud-builders/docker'
     args:
       - 'push'
