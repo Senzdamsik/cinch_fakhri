@@ -1,44 +1,5 @@
 steps:
-  # Step 1: Validate Service Account Key with Enhanced Error Handling
-  - name: 'gcr.io/cloud-builders/gcloud'
-    id: 'fetch-sa-key'
-    entrypoint: 'bash'
-    args:
-      - '-c'
-      - |
-        gcloud secrets versions access latest --secret=sa-key > /workspace/sa-key.json || exit 1 &&
-        python3 -c '
-import json
-import sys
-
-try:
-    with open("/workspace/sa-key.json", "r") as f:
-        data = json.load(f)
-        if not data.get("client_email"):
-            print("Invalid service account key")
-            sys.exit(1)
-        print(f"Validated service account: {data.get(\"client_email\")}")
-except json.JSONDecodeError:
-    print("Invalid JSON in service account key")
-    sys.exit(1)
-        ' || exit 1 &&
-        chmod 600 /workspace/sa-key.json
-
-  # Step 2: Cloud SQL Proxy Setup
-  - name: 'gcr.io/cloud-sql-connectors/cloud-sql-proxy:2.1.0'
-    id: 'cloud-sql-proxy'
-    entrypoint: 'bash'
-    args:
-      - '-c'
-      - |
-        /cloud-sql-proxy \
-          --credentials-file=/workspace/sa-key.json \
-          --port=5432 \
-          speedy-area-192702:asia-southeast1:test-cinch &
-        sleep 5  # Wait for proxy to start
-    waitFor: ['fetch-sa-key']
-
-  # Step 3: Build Application Image
+  # Step 1: Build Application Image
   - name: 'docker'
     id: 'build-app'
     args:
@@ -46,9 +7,8 @@ except json.JSONDecodeError:
       - '-t'
       - 'asia-southeast1-docker.pkg.dev/${PROJECT_ID}/cinch-fakhri-repo/app:${SHORT_SHA}'
       - '.'
-    waitFor: ['cloud-sql-proxy']
 
-  # Step 4: Push Image to Artifact Registry
+  # Step 2: Push Image to Artifact Registry
   - name: 'docker'
     id: 'push-app'
     args:
@@ -56,7 +16,7 @@ except json.JSONDecodeError:
       - 'asia-southeast1-docker.pkg.dev/${PROJECT_ID}/cinch-fakhri-repo/app:${SHORT_SHA}'
     waitFor: ['build-app']
 
-  # Step 5: Deploy to Cloud Run with secrets as environment variables
+  # Step 3: Deploy to Cloud Run with secrets and Cloud SQL
   - name: 'gcr.io/cloud-builders/gcloud'
     id: 'deploy'
     args:
@@ -76,7 +36,8 @@ except json.JSONDecodeError:
       - |
         DB_USER=DB_USER:latest,
         DB_PASSWORD=DB_PASSWORD:latest,
-        DB_HOST=DB_HOST:latest
+        DB_HOST=DB_HOST:latest,
+        SA_KEY=sa-key:latest
       - '--set-env-vars'
       - |
         DATABASE_URL=postgresql://$${DB_USER}:$${DB_PASSWORD}@/test_cinch?host=/cloudsql/speedy-area-192702:asia-southeast1:test-cinch
