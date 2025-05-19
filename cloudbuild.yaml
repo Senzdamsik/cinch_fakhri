@@ -1,20 +1,11 @@
 steps:
-  # Step 1: Get the service account key from Secret Manager with debugging
+  # Step 1: Get the service account key from Secret Manager
   - name: 'gcr.io/cloud-builders/gcloud'
     entrypoint: 'bash'
     args:
       - '-c'
       - |
-        echo "Fetching service account key..."
         gcloud secrets versions access latest --secret=sa-key > /workspace/sa-key.json
-        echo "File contents:"
-        cat /workspace/sa-key.json
-        echo "File size:"
-        ls -l /workspace/sa-key.json
-        if [ ! -s /workspace/sa-key.json ]; then
-          echo "ERROR: Service account key file is empty!"
-          exit 1
-        fi
 
   # Step 2: Fetch database password
   - name: 'gcr.io/cloud-builders/gcloud'
@@ -22,11 +13,7 @@ steps:
     args:
       - '-c'
       - |
-        echo "Fetching database password..."
-        DB_PASSWORD=$(gcloud secrets versions access latest --secret=DB_PASSWORD)
-        # URL encode the password to handle special characters
-        ENCODED_PASSWORD=$(printf '%s' "$DB_PASSWORD" | jq -sRr @uri)
-        echo "$ENCODED_PASSWORD" > /workspace/db_password.txt
+        gcloud secrets versions access latest --secret=DB_PASSWORD > /workspace/db_password.txt
 
   # Step 3: Run database migrations
   - name: 'gcr.io/cloud-builders/docker'
@@ -40,7 +27,7 @@ steps:
 
   - name: 'migration-image'
     env:
-      - 'DATABASE_URL=postgresql://postgres:${_DB_PASSWORD}@35.240.241.62:5432/test_cinch'
+      - 'DATABASE_URL=postgresql://postgres:$(cat /workspace/db_password.txt)@35.240.241.62:5432/test_cinch'
 
   # Step 4: Populate database with initial data
   - name: 'gcr.io/cloud-sql-connectors/cloud-sql-proxy:2.1.0'
@@ -65,7 +52,7 @@ steps:
       - 'PGPORT=5432'
       - 'PGUSER=postgres'
       - 'PGDATABASE=test_cinch'
-      - 'PGPASSWORD=${_DB_PASSWORD}'
+      - 'PGPASSWORD=$(cat /workspace/db_password.txt)'
 
   # Step 5: Build the application image
   - name: 'gcr.io/cloud-builders/docker'
@@ -97,10 +84,7 @@ steps:
       - '--add-cloudsql-instances'
       - 'speedy-area-192702:asia-southeast1:test-cinch'
       - '--set-env-vars'
-      - 'DATABASE_URL=postgresql://postgres:${_DB_PASSWORD}@/test_cinch?host=/cloudsql/speedy-area-192702:asia-southeast1:test-cinch'
-
-substitutions:
-  _DB_PASSWORD: ''
+      - 'DATABASE_URL=postgresql://postgres:$(cat /workspace/db_password.txt)@/test_cinch?host=/cloudsql/speedy-area-192702:asia-southeast1:test-cinch'
 
 options:
   logging: CLOUD_LOGGING_ONLY 
