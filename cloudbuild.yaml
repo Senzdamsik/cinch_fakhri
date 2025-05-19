@@ -16,27 +16,11 @@ steps:
       - '-f'
       - 'Dockerfile.migration'
       - '.'
-    id: 'build-migration-image'
 
   - name: 'migration-image'
     env:
       - 'DATABASE_URL=postgresql://postgres:$$DB_PASSWORD@35.240.241.62:5432/test_cinch'
-      - 'POSTGRES_HOST=35.240.241.62'
-      - 'POSTGRES_PORT=5432'
-      - 'POSTGRES_DB=test_cinch'
-      - 'POSTGRES_USER=postgres'
     secretEnv: ['DB_PASSWORD']
-    id: 'run-migrations'
-    entrypoint: 'bash'
-    args:
-      - '-c'
-      - |
-        echo "Attempting to run migrations..."
-        echo "Database URL: $${DATABASE_URL}"
-        echo "Postgres Host: $${POSTGRES_HOST}"
-        pip install sqlalchemy alembic psycopg2-binary python-dotenv
-        python -c "import os; print(os.environ)" || true
-        alembic upgrade head || (echo "Migration failed" && exit 1)
 
   # Step 3: Populate database with initial data
   - name: 'gcr.io/cloud-sql-connectors/cloud-sql-proxy:2.1.0'
@@ -44,7 +28,7 @@ steps:
       - '--credentials-file=/workspace/sa-key.json'
       - '--port=5432'
       - 'speedy-area-192702:asia-southeast1:test-cinch'
-    waitFor: ['run-migrations']
+    waitFor: ['-']
 
   - name: 'gcr.io/cloud-builders/docker'
     args:

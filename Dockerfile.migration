@@ -1,38 +1,29 @@
 FROM python:3.11-slim
 
+WORKDIR /app
+
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
     postgresql-client \
     gcc \
-    libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 
-WORKDIR /app
-
-# Copy and install dependencies
+# Install Python dependencies
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Install additional migration dependencies
-RUN pip install --no-cache-dir \
-    sqlalchemy \
-    alembic \
-    psycopg2-binary \
-    python-dotenv
+# Install Alembic explicitly
+RUN pip install --no-cache-dir alembic psycopg2-binary sqlalchemy
 
 # Copy migration files
 COPY alembic.ini .
 COPY alembic/ alembic/
 COPY app/ app/
-COPY .env* ./
 
-# Add verbose logging
-ENV PYTHONUNBUFFERED=1
+# Print debug information
+RUN echo "Current directory contents:" && ls -la
+RUN echo "Alembic version:" && alembic --version
 
-# Use shell to provide more detailed error output
-ENTRYPOINT ["/bin/bash", "-c"]
-CMD ["echo 'Running database migrations...'; \
-      echo 'Current directory:' && pwd && \
-      echo 'Listing files:' && ls -la && \
-      python -c 'import os; print(os.environ)' && \
-      alembic upgrade head || (echo 'Migration failed' && exit 1)"] 
+# Set the entrypoint with verbose output
+ENTRYPOINT ["bash", "-c"]
+CMD ["set -x && alembic upgrade head"] 
