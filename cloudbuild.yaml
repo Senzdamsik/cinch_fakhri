@@ -92,6 +92,8 @@ steps:
       - 'POSTGRES_PASSWORD=DB_PASSWORD:latest'
       - '--set-env-vars'
       - 'DATABASE_URL=postgresql://postgres:$(DB_PASSWORD)@/test_cinch?host=/cloudsql/speedy-area-192702:asia-southeast1:test-cinch,POSTGRES_USER=postgres,POSTGRES_DB=test_cinch,POSTGRES_HOST=/cloudsql/speedy-area-192702:asia-southeast1:test-cinch'
+      - '--service-account'
+      - 'pribadi-speedy-area-192702@speedy-area-192702.iam.gserviceaccount.com'
     waitFor: ['push-app-image']
 
 options:
