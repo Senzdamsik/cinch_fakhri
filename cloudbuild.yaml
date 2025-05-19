@@ -46,7 +46,7 @@ steps:
         API_V1_STR=/api/v1,
         DEBUG=True,
         PROJECT_NAME=Cinch API,
-        POSTGRES_DB=test_cinch,
+        POSTGRES_DB=test-cinch,
         POSTGRES_HOST=/cloudsql/${PROJECT_ID}:asia-southeast1:test-cinch,
         POSTGRES_PORT=5432
     waitFor: ['push-app']
