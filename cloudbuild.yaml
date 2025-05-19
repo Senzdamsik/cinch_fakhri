@@ -16,15 +16,15 @@ steps:
           exit 1
         fi
 
-  # Step 2: Debug secret access
+  # Step 2: Fetch database password
   - name: 'gcr.io/cloud-builders/gcloud'
     entrypoint: 'bash'
     args:
       - '-c'
       - |
-        echo "Attempting to access DB_PASSWORD secret..."
-        gcloud secrets versions access latest --secret=DB_PASSWORD
-        echo "Secret access successful"
+        echo "Fetching database password..."
+        DB_PASSWORD=$(gcloud secrets versions access latest --secret=DB_PASSWORD)
+        echo "::set-env name=DB_PASSWORD::$DB_PASSWORD"
 
   # Step 3: Run database migrations
   - name: 'gcr.io/cloud-builders/docker'
@@ -38,8 +38,7 @@ steps:
 
   - name: 'migration-image'
     env:
-      - 'DATABASE_URL=postgresql://postgres:$$DB_PASSWORD@35.240.241.62:5432/test_cinch'
-    secretEnv: ['DB_PASSWORD']
+      - 'DATABASE_URL=postgresql://postgres:${DB_PASSWORD}@35.240.241.62:5432/test_cinch'
 
   # Step 4: Populate database with initial data
   - name: 'gcr.io/cloud-sql-connectors/cloud-sql-proxy:2.1.0'
@@ -64,7 +63,7 @@ steps:
       - 'PGPORT=5432'
       - 'PGUSER=postgres'
       - 'PGDATABASE=test_cinch'
-    secretEnv: ['DB_PASSWORD']
+      - 'PGPASSWORD=${DB_PASSWORD}'
 
   # Step 5: Build the application image
   - name: 'gcr.io/cloud-builders/docker'
@@ -96,12 +95,7 @@ steps:
       - '--add-cloudsql-instances'
       - 'speedy-area-192702:asia-southeast1:test-cinch'
       - '--set-env-vars'
-      - 'DATABASE_URL=postgresql://postgres:$$DB_PASSWORD@/test_cinch?host=/cloudsql/speedy-area-192702:asia-southeast1:test-cinch'
-
-availableSecrets:
-  secretManager:
-    - versionName: projects/speedy-area-192702/secrets/DB_PASSWORD/versions/latest
-      env: 'DB_PASSWORD'
+      - 'DATABASE_URL=postgresql://postgres:${DB_PASSWORD}@/test_cinch?host=/cloudsql/speedy-area-192702:asia-southeast1:test-cinch'
 
 options:
   logging: CLOUD_LOGGING_ONLY 
