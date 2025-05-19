@@ -6,10 +6,10 @@ steps:
     args:
       - '-c'
       - |
-        # Fetch service account key with error handling
+        echo "Fetching service account key..."
         gcloud secrets versions access latest --secret=sa-key > /workspace/sa-key.json || exit 1
         
-        # Validate JSON structure with a simple check
+        echo "Validating service account key..."
         if [ ! -s /workspace/sa-key.json ]; then
           echo "ERROR: Service account key file is empty!"
           exit 1
@@ -20,11 +20,9 @@ steps:
           exit 1
         fi
         
-        # Print out the client email for verification
         echo "Service Account Client Email:"
         grep -o '"client_email": *"[^"]*"' /workspace/sa-key.json
         
-        # Ensure correct permissions
         chmod 644 /workspace/sa-key.json
 
   # Step 2: Fetch Database Password Only
@@ -34,8 +32,9 @@ steps:
     args:
       - '-c'
       - |
+        echo "Fetching database password..."
         gcloud secrets versions access latest --secret=DB_PASSWORD > /workspace/db_password.txt
-        # Use hardcoded values for non-sensitive configuration
+        echo "Setting up database configuration..."
         echo "35.240.241.62" > /workspace/db_host.txt
         echo "postgres" > /workspace/db_user.txt
         echo "test_cinch" > /workspace/db_name.txt
@@ -53,6 +52,7 @@ steps:
     name: 'docker'
     args:
       - 'build'
+      - '--progress=plain'
       - '-t'
       - 'migration-image'
       - '-f'
@@ -75,6 +75,7 @@ steps:
     name: 'docker'
     args:
       - 'build'
+      - '--progress=plain'
       - '-t'
       - 'db-seed-image'
       - '-f'
@@ -96,6 +97,7 @@ steps:
     name: 'docker'
     args:
       - 'build'
+      - '--progress=plain'
       - '-t'
       - 'asia-southeast1-docker.pkg.dev/${PROJECT_ID}/cinch-fakhri-repo/app:${SHORT_SHA}'
       - '.'
